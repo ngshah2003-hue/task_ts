@@ -1,0 +1,25 @@
+{
+  "git.confirmSync": false,
+  "[javascript]": {
+    "editor.defaultFormatter": "vscode.typescript-language-features"
+  },
+  "terminal.integrated.fontSize": 16,
+  "cSpell.userWords": ["MSISDN"],
+  "terminal.integrated.copyOnSelection": true,
+  "editor.formatOnPaste": true,
+  "editor.formatOnSave": true,
+  "editor.wordWrap": "on",
+  "prettier-more.singleQuote": true,
+  "prettier-more.singleAttributePerLine": true,
+  "remove-empty-lines.runOnSave": true,
+  "remove-empty-lines.allowedNumberOfEmptyLines": 0,
+  "editor.fontFamily": "'Droid Sans Mono', 'monospace', monospace",
+  "editor.fontLigatures": false,
+  "editor.fontSize": 14,
+  "workbench.colorTheme": "Default Dark Modern",
+  "workbench.iconTheme": "material-icon-theme",
+  "files.autoSave": "afterDelay",
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "prettier.singleQuote": true,
+  "prettier.singleAttributePerLine": true
+}

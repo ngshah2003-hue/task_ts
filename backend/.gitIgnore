@@ -1,0 +1,11 @@
+node_modules/
+src/assets/db/
+src/notes.txt
+config/dev.env
+# Elastic Beanstalk Files
+.elasticbeanstalk/*
+!.elasticbeanstalk/*.cfg.yml
+!.elasticbeanstalk/*.global.yml
+.ebextensions/*
+.vscode/settings.json
+uploads
