@@ -29,7 +29,7 @@
 
 .login-page {
   min-height: 100vh;
-  background: linear-gradient(135deg, #f5f7fa 0%, #e4e8ec 100%);
+  /* background: linear-gradient(135deg, #f5f7fa 0%, #e4e8ec 100%); */
 }
 
 /* Brand / logo block */

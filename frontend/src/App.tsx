@@ -19,13 +19,15 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
   return <>{children}</>;
 };
 
+const getCurrentYear = (): number => new Date().getFullYear();
+
 const Layout: React.FC<{ children: ReactNode }> = ({ children }) => (
   <div className="d-flex flex-column min-vh-100">
     <Navigation />
     <main className="flex-grow-1">{children}</main>
     <footer className="bg-light text-center py-3 mt-auto">
       <Container>
-        <small className="text-muted">© 2024 Admin</small>
+        <small className="text-muted">© {getCurrentYear()} Admin</small>
       </Container>
     </footer>
   </div>
