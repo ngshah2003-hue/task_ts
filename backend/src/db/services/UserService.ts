@@ -1,4 +1,5 @@
-import { TableFields, UserTypes, ValidationMsgs } from "../../utils/constants";
+import validator from "validator";
+import { PASSWORD_REGEX, TableFields, UserTypes, ValidationMsgs } from "../../utils/constants";
 import ValidationError from "../../utils/ValidationError";
 import User from "../models/user";
 import type { IUserDoc } from "../../types";
@@ -68,10 +69,17 @@ export default class UserService {
   }
 
   static async insertUserRecord(reqBody: Record<string, unknown>): Promise<IUserDoc> {
+    const name = `${(reqBody[TableFields.name_] as string) ?? ""}`.trim();
     const email = `${(reqBody[TableFields.email] as string) ?? ""}`.trim().toLowerCase();
-    const password = reqBody[TableFields.password] as string;
+    const password: string = typeof reqBody[TableFields.password] === "string" ? (reqBody[TableFields.password] as string) : "";
+
+    if (!name) throw new ValidationError(ValidationMsgs.NameEmpty);
+    if (name.length > 100) throw new ValidationError(ValidationMsgs.NameTooLong);
     if (!email) throw new ValidationError(ValidationMsgs.EmailEmpty);
+    if (!validator.isEmail(email)) throw new ValidationError(ValidationMsgs.EmailInvalid);
     if (!password) throw new ValidationError(ValidationMsgs.PasswordEmpty);
+    if (password.length < 8) throw new ValidationError(ValidationMsgs.PasswordMinLength);
+    if (!PASSWORD_REGEX.test(password)) throw new ValidationError(ValidationMsgs.PasswordInvalid);
 
     const exists = await User.exists({ [TableFields.email]: email });
     if (exists) throw new ValidationError(ValidationMsgs.DuplicateEmail);
@@ -80,10 +88,9 @@ export default class UserService {
     const user = new User({
       [TableFields.email]: email,
       [TableFields.password]: password,
-      [TableFields.name_]: (reqBody[TableFields.name_] as string) ?? "",
+      [TableFields.name_]: name,
       [TableFields.userType]: userType,
     });
-    if (!user.isValidPassword(password)) throw new ValidationError(ValidationMsgs.PasswordInvalid);
     await user.save();
     return user;
   }

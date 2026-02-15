@@ -1,6 +1,7 @@
-// API BASE URL – update for your backend
-export const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/';
+// API BASE URL – set VITE_API_URL in .env to match your backend (e.g. http://localhost:8001)
+export const BASE_URL = 'http://localhost:8009/';
 export const PAGE_LIMIT = 10;
+export const TITLE_MAX_LENGTH = 200;
 
 // API method types (used by apiCallService + apiEndPoints)
 export const GET = 'GET';

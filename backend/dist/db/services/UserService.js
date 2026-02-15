@@ -3,6 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+const validator_1 = __importDefault(require("validator"));
 const constants_1 = require("../../utils/constants");
 const ValidationError_1 = __importDefault(require("../../utils/ValidationError"));
 const user_1 = __importDefault(require("../models/user"));
@@ -52,12 +53,23 @@ class UserService {
         await user_1.default.updateOne({ [constants_1.TableFields.ID]: userId }, { $pull: { [constants_1.TableFields.tokens]: { [constants_1.TableFields.token]: authToken } } });
     }
     static async insertUserRecord(reqBody) {
+        const name = `${reqBody[constants_1.TableFields.name_] ?? ""}`.trim();
         const email = `${reqBody[constants_1.TableFields.email] ?? ""}`.trim().toLowerCase();
-        const password = reqBody[constants_1.TableFields.password];
+        const password = typeof reqBody[constants_1.TableFields.password] === "string" ? reqBody[constants_1.TableFields.password] : "";
+        if (!name)
+            throw new ValidationError_1.default(constants_1.ValidationMsgs.NameEmpty);
+        if (name.length > 100)
+            throw new ValidationError_1.default(constants_1.ValidationMsgs.NameTooLong);
         if (!email)
             throw new ValidationError_1.default(constants_1.ValidationMsgs.EmailEmpty);
+        if (!validator_1.default.isEmail(email))
+            throw new ValidationError_1.default(constants_1.ValidationMsgs.EmailInvalid);
         if (!password)
             throw new ValidationError_1.default(constants_1.ValidationMsgs.PasswordEmpty);
+        if (password.length < 8)
+            throw new ValidationError_1.default(constants_1.ValidationMsgs.PasswordMinLength);
+        if (!constants_1.PASSWORD_REGEX.test(password))
+            throw new ValidationError_1.default(constants_1.ValidationMsgs.PasswordInvalid);
         const exists = await user_1.default.exists({ [constants_1.TableFields.email]: email });
         if (exists)
             throw new ValidationError_1.default(constants_1.ValidationMsgs.DuplicateEmail);
@@ -65,11 +77,9 @@ class UserService {
         const user = new user_1.default({
             [constants_1.TableFields.email]: email,
             [constants_1.TableFields.password]: password,
-            [constants_1.TableFields.name_]: reqBody[constants_1.TableFields.name_] ?? "",
+            [constants_1.TableFields.name_]: name,
             [constants_1.TableFields.userType]: userType,
         });
-        if (!user.isValidPassword(password))
-            throw new ValidationError_1.default(constants_1.ValidationMsgs.PasswordInvalid);
         await user.save();
         return user;
     }

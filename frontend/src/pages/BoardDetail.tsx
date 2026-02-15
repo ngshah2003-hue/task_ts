@@ -1,0 +1,385 @@
+import { useEffect, useState } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import {
+  DndContext,
+  DragEndEvent,
+  DragOverlay,
+  DragStartEvent,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from '@dnd-kit/core';
+import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { Container, Spinner, Card as BSCard, Button, Form, InputGroup } from 'react-bootstrap';
+import { toast } from 'react-toastify';
+import { useAppDispatch, useAppSelector } from '../store/hooks';
+import {
+  fetchBoardDetail,
+  addList,
+  removeList,
+  updateCard,
+  removeCard,
+  moveCardThunk,
+  moveCardLocal,
+  clearBoardDetail,
+  clearError,
+} from '../store/slices/boardDetailSlice';
+import type { Card as CardType } from '../api/kanbanApi';
+import { cardStatuses } from '../api/kanbanApi';
+import KanbanList from '../components/kanban/KanbanList';
+import CardModal from '../components/kanban/CardModal';
+import ConfirmModal from '../components/common/ConfirmModal';
+import Pagination from '../components/common/Pagination';
+import { useDebounce } from '../hooks/useDebounce';
+import { getStatusLabel, getStatusBadgeVariant } from '../utils/statusLabel';
+
+const SEARCH_DEBOUNCE_MS = 400;
+const LIST_LIMIT_OPTIONS = [
+  { value: '', label: 'All' },
+  { value: 10, label: '10' },
+  { value: 20, label: '20' },
+  { value: 30, label: '30' },
+] as const;
+const ALL_LISTS_LIMIT = 500;
+
+const BoardDetail: React.FC = () => {
+  const { boardId } = useParams<{ boardId: string }>();
+  const navigate = useNavigate();
+  const dispatch = useAppDispatch();
+  const { board, lists, totalLists, totalPages, loading, error } = useAppSelector(
+    s => s.boardDetail,
+  );
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string>('');
+  const debouncedSearch = useDebounce(search.trim(), SEARCH_DEBOUNCE_MS);
+  const [activeCard, setActiveCard] = useState<CardType | null>(null);
+  const [editingCard, setEditingCard] = useState<CardType | null>(null);
+  const [newListTitle, setNewListTitle] = useState('');
+  const [cardToDelete, setCardToDelete] = useState<string | null>(null);
+  const [deletingCard, setDeletingCard] = useState(false);
+  const [addListLoading, setAddListLoading] = useState(false);
+  const [listTitleTouched, setListTitleTouched] = useState(false);
+  const [listSubmitAttempted, setListSubmitAttempted] = useState(false);
+  const [listLimit, setListLimit] = useState<number | ''>(10);
+  const [listPage, setListPage] = useState(1);
+
+  const hasLists = lists.length > 0;
+  const filterDisabled = !hasLists;
+
+  useEffect(() => {
+    return () => {
+      dispatch(clearBoardDetail());
+    };
+  }, [dispatch]);
+
+  useEffect(() => {
+    if (!boardId) return;
+    if (filterDisabled && (debouncedSearch || statusFilter)) return;
+    const limit = listLimit === '' ? ALL_LISTS_LIMIT : listLimit;
+    const passFilters = lists.length > 0;
+    dispatch(
+      fetchBoardDetail({
+        boardId,
+        params: {
+          ...(passFilters
+            ? { q: debouncedSearch || undefined, status: statusFilter || undefined }
+            : {}),
+          listPage,
+          listLimit: limit,
+        },
+      }),
+    );
+  }, [boardId, debouncedSearch, statusFilter, listPage, listLimit, dispatch]);
+
+  useEffect(() => {
+    setListPage(1);
+  }, [debouncedSearch, statusFilter]);
+
+  useEffect(() => {
+    if (error) {
+      toast.error(error);
+      dispatch(clearError());
+    }
+  }, [error, dispatch]);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 8 },
+    }),
+  );
+
+  const handleDragStart = (event: DragStartEvent) => {
+    const { active } = event;
+    const list = lists.find(l => l.cards.some(c => c._id === active.id));
+    const card = list?.cards.find(c => c._id === active.id);
+    if (card) setActiveCard(card);
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    setActiveCard(null);
+    const { active, over } = event;
+    if (!over || !boardId) return;
+    const cardId = String(active.id);
+    const overData = over.data.current;
+    const toListId = overData?.listId as string | undefined;
+    const toIndex = typeof overData?.index === 'number' ? overData.index : 0;
+    if (!toListId) return;
+    const fromList = lists.find(l => l.cards.some(c => c._id === cardId));
+    if (!fromList) return;
+    const fromListId = fromList._id;
+    dispatch(moveCardLocal({ cardId, fromListId, toListId, toIndex }));
+    dispatch(moveCardThunk({ cardId, listId: toListId, position: toIndex })).catch(() => {
+      dispatch(
+        fetchBoardDetail({
+          boardId: boardId!,
+          params: { q: debouncedSearch || undefined, status: statusFilter || undefined },
+        }),
+      );
+    });
+  };
+
+  const listTitleInvalid = (listTitleTouched || listSubmitAttempted) && !newListTitle.trim();
+
+  const handleAddList = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setListSubmitAttempted(true);
+    const title = newListTitle.trim();
+    if (!title || !boardId) return;
+    setAddListLoading(true);
+    try {
+      await dispatch(addList({ boardId, title })).unwrap();
+      toast.success('List added successfully');
+      setNewListTitle('');
+      setListSubmitAttempted(false);
+      setListTitleTouched(false);
+      setListPage(1);
+      dispatch(
+        fetchBoardDetail({
+          boardId,
+          params: {
+            ...(hasLists
+              ? { q: debouncedSearch || undefined, status: statusFilter || undefined }
+              : {}),
+            listPage: 1,
+            listLimit: listLimit === '' ? ALL_LISTS_LIMIT : listLimit,
+          },
+        }),
+      );
+    } catch (err) {
+      toast.error(String(err));
+    } finally {
+      setAddListLoading(false);
+    }
+  };
+
+  if (!boardId) {
+    navigate('/dashboard');
+    return null;
+  }
+
+  if (loading && !board) {
+    return (
+      <Container className="py-5 text-center">
+        <Spinner animation="border" />
+      </Container>
+    );
+  }
+
+  if (!board) {
+    return (
+      <Container className="py-5">
+        <p className="text-muted">Board not found.</p>
+        <Button variant="link" onClick={() => navigate('/dashboard')}>
+          Back to boards
+        </Button>
+      </Container>
+    );
+  }
+
+  return (
+    <Container fluid className="py-3 px-2 px-md-3">
+      <div className="d-flex flex-wrap align-items-center gap-2 gap-md-3 mb-3 py-1">
+        <Button
+          variant="outline-secondary"
+          onClick={() => navigate('/dashboard')}
+          className="flex-shrink-0"
+        >
+          ← Boards
+        </Button>
+        <h1 className="h5 mb-0 text-truncate flex-grow-1" style={{ minWidth: 0 }}>
+          {board.title}
+        </h1>
+        <InputGroup className="flex-grow-1" style={{ maxWidth: 340, minWidth: 220 }}>
+          <InputGroup.Text className="bg-white text-muted">
+            <i className="bi bi-search" aria-hidden />
+          </InputGroup.Text>
+          <Form.Control
+            placeholder="Search cards…"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            disabled={filterDisabled}
+          />
+          <Form.Select
+            value={statusFilter}
+            onChange={e => setStatusFilter(e.target.value)}
+            disabled={filterDisabled}
+            style={{ maxWidth: 150 }}
+          >
+            <option value="">All statuses</option>
+            {cardStatuses.map(s => (
+              <option key={s} value={s}>
+                {getStatusLabel(s)}
+              </option>
+            ))}
+          </Form.Select>
+        </InputGroup>
+        <Form
+          onSubmit={handleAddList}
+          className="d-flex align-items-center gap-2 flex-wrap flex-grow-1"
+          style={{ minWidth: 0 }}
+        >
+          <Form.Control
+            placeholder="List title"
+            value={newListTitle}
+            onChange={e => setNewListTitle(e.target.value)}
+            onBlur={() => setListTitleTouched(true)}
+            isInvalid={listTitleInvalid}
+            className="flex-grow-1"
+            style={{ maxWidth: 220, minWidth: 120 }}
+            disabled={addListLoading}
+          />
+          <Button
+            type="submit"
+            variant="outline-primary"
+            disabled={addListLoading || !newListTitle.trim()}
+            className="flex-shrink-0"
+          >
+            {addListLoading ? (
+              <>
+                <Spinner animation="border" size="sm" className="me-1" />
+                Adding…
+              </>
+            ) : (
+              '+ Add list'
+            )}
+          </Button>
+          {listTitleInvalid && (
+            <Form.Control.Feedback
+              type="invalid"
+              className="d-block small position-absolute"
+              style={{ top: '100%' }}
+            >
+              List title is required.
+            </Form.Control.Feedback>
+          )}
+        </Form>
+      </div>
+
+      <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+        <div className="position-relative">
+          {loading && (
+            <div
+              className="position-absolute top-0 start-0 end-0 bottom-0 d-flex align-items-center justify-content-center bg-white bg-opacity-75 rounded"
+              style={{ zIndex: 10 }}
+            >
+              <Spinner animation="border" />
+            </div>
+          )}
+          {!loading && lists.length === 0 ? (
+            <div className="text-center py-5 text-muted">No lists found</div>
+          ) : (
+            <div
+              className="row row-cols-1 row-cols-sm-2 row-cols-lg-3 g-2 gy-4 mb-4 justify-content-start"
+              style={{ minHeight: 400 }}
+            >
+              {lists.map(list => (
+                <div key={list._id} className="col d-flex">
+                  <KanbanList
+                    list={list}
+                    boardId={boardId}
+                    onEditCard={setEditingCard}
+                    onDeleteCard={cardId => setCardToDelete(cardId)}
+                  />
+                </div>
+              ))}
+            </div>
+          )}
+
+          {totalLists > 0 && lists.length > 0 && (
+            <BSCard className="w-100 shadow-sm overflow-hidden">
+              <BSCard.Body className="p-2 p-md-3">
+                <Pagination
+                  currentPage={listPage}
+                  totalRecords={totalLists}
+                  pageLimit={listLimit}
+                  limitOptions={LIST_LIMIT_OPTIONS}
+                  onPageLimitChange={limit => {
+                    setListLimit(limit);
+                    setListPage(1);
+                  }}
+                  onPreviousPage={() => setListPage(p => Math.max(1, p - 1))}
+                  onNextPage={() => setListPage(p => Math.min(totalPages || 1, p + 1))}
+                  onPageChange={setListPage}
+                  loading={loading}
+                  label="Lists"
+                />
+              </BSCard.Body>
+            </BSCard>
+          )}
+        </div>
+
+        <DragOverlay>
+          {activeCard ? (
+            <BSCard className="shadow" style={{ width: 260 }}>
+              <BSCard.Body className="py-2">
+                <div className="small fw-medium text-break" style={{ wordBreak: 'break-word' }}>
+                  {activeCard.title}
+                </div>
+                {activeCard.dueDate && (
+                  <div className="small text-muted mt-1">
+                    Due {new Date(activeCard.dueDate).toLocaleDateString()}
+                  </div>
+                )}
+              </BSCard.Body>
+            </BSCard>
+          ) : null}
+        </DragOverlay>
+      </DndContext>
+
+      {editingCard && (
+        <CardModal
+          card={editingCard}
+          onClose={() => setEditingCard(null)}
+          onSave={async body => {
+            await dispatch(updateCard({ cardId: editingCard._id, body })).unwrap();
+            toast.success('Card updated successfully');
+            setEditingCard(null);
+          }}
+        />
+      )}
+
+      <ConfirmModal
+        show={cardToDelete !== null}
+        title="Delete card"
+        message="Are you sure you want to delete this card?"
+        confirmLabel="Delete"
+        variant="danger"
+        loading={deletingCard}
+        onConfirm={async () => {
+          if (!cardToDelete) return;
+          setDeletingCard(true);
+          try {
+            await dispatch(removeCard(cardToDelete)).unwrap();
+            toast.success('Card deleted successfully');
+            setCardToDelete(null);
+          } finally {
+            setDeletingCard(false);
+          }
+        }}
+        onCancel={() => !deletingCard && setCardToDelete(null)}
+      />
+    </Container>
+  );
+};
+
+export default BoardDetail;

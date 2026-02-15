@@ -24,7 +24,7 @@ const userSchema = new mongoose_1.default.Schema({
     },
     [constants_1.TableFields.password]: {
         type: String,
-        minlength: 8,
+        minlength: [8, constants_1.ValidationMsgs.PasswordMinLength],
         trim: true,
         required: [true, constants_1.ValidationMsgs.PasswordEmpty],
     },
@@ -51,8 +51,7 @@ userSchema.methods.isValidAuth = async function (password) {
     return bcryptjs_1.default.compare(password, this.password);
 };
 userSchema.methods.isValidPassword = function (password) {
-    const regEx = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
-    return regEx.test(password);
+    return constants_1.PASSWORD_REGEX.test(password);
 };
 userSchema.methods.createAuthToken = function (interfaceType) {
     const payload = { [constants_1.TableFields.ID]: this[constants_1.TableFields.ID].toString() };
