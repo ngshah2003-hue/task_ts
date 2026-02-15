@@ -7,6 +7,7 @@ exports.signup = signup;
 exports.login = login;
 exports.logout = logout;
 exports.me = me;
+const validator_1 = __importDefault(require("validator"));
 const UserService_1 = __importDefault(require("../db/services/UserService"));
 const constants_1 = require("../utils/constants");
 const ValidationError_1 = __importDefault(require("../utils/ValidationError"));
@@ -24,6 +25,8 @@ async function login(req) {
     if (!email)
         throw new ValidationError_1.default(constants_1.ValidationMsgs.EmailEmpty);
     email = `${email}`.trim().toLowerCase();
+    if (!validator_1.default.isEmail(email))
+        throw new ValidationError_1.default(constants_1.ValidationMsgs.EmailInvalid);
     const password = req.body[constants_1.TableFields.password];
     if (!password)
         throw new ValidationError_1.default(constants_1.ValidationMsgs.PasswordEmpty);

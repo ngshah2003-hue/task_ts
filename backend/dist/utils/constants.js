@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.ResponseStatus = exports.TableFields = exports.TableNames = exports.ValidationMsgs = exports.AuthTypes = exports.InterfaceTypes = exports.UserTypes = void 0;
+exports.ResponseStatus = exports.CardStatus = exports.TableFields = exports.TableNames = exports.PASSWORD_REGEX = exports.ValidationMsgs = exports.AuthTypes = exports.InterfaceTypes = exports.UserTypes = void 0;
 exports.UserTypes = {
     Admin: 1,
     Customer: 2,
@@ -19,16 +19,24 @@ exports.AuthTypes = {
 exports.ValidationMsgs = {
     UserNotFound: "User Not Found",
     AuthFail: "Authentication failed. Please log in.",
-    EmailEmpty: "Email is required!",
-    PasswordEmpty: "Password cannot be blank.",
+    EmailEmpty: "Email is required.",
+    EmailInvalid: "Email is not valid.",
+    PasswordEmpty: "Password is required.",
+    PasswordMinLength: "Must be minimum 8 characters.",
+    PasswordInvalid: "Password must include uppercase, lowercase, number and special character.",
     UnableToLogin: "Incorrect email and/or password.",
-    EmailInvalid: "Provided email address is invalid.",
-    PasswordInvalid: "Password is invalid.",
     DuplicateEmail: "This email address is already in use.",
+    NameEmpty: "Name is required.",
+    NameTooLong: "Name is too long.",
 };
+/** Same as frontend: upper, lower, number, special, min 8 */
+exports.PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
 exports.TableNames = {
     Admin: "admins",
     User: "users",
+    Board: "boards",
+    List: "lists",
+    Card: "cards",
 };
 exports.TableFields = {
     ID: "_id",
@@ -45,6 +53,19 @@ exports.TableFields = {
     image: "image",
     passwordResetToken: "passwordResetToken",
     passwordResetExpires: "passwordResetExpires",
+    // Kanban
+    owner: "owner",
+    boardId: "boardId",
+    listId: "listId",
+    title: "title",
+    order: "order",
+    dueDate: "dueDate",
+    status: "status",
+};
+exports.CardStatus = {
+    Todo: "todo",
+    InProgress: "in_progress",
+    Done: "done",
 };
 exports.ResponseStatus = {
     Success: 200,

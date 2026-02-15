@@ -1,3 +1,4 @@
+import validator from "validator";
 import { Request } from "express";
 import UserService from "../db/services/UserService";
 import { TableFields, ValidationMsgs, InterfaceTypes, UserTypes } from "../utils/constants";
@@ -19,6 +20,7 @@ export async function login(req: Request): Promise<{ user: IUserDoc; token: stri
   let email = req.body[TableFields.email];
   if (!email) throw new ValidationError(ValidationMsgs.EmailEmpty);
   email = `${email}`.trim().toLowerCase();
+  if (!validator.isEmail(email)) throw new ValidationError(ValidationMsgs.EmailInvalid);
 
   const password = req.body[TableFields.password];
   if (!password) throw new ValidationError(ValidationMsgs.PasswordEmpty);

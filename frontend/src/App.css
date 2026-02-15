@@ -4,6 +4,14 @@
   cursor: pointer;
 }
 
+.cursor-grab {
+  cursor: grab;
+}
+
+.cursor-grabbing {
+  cursor: grabbing;
+}
+
 .animate-fade-in {
   animation: fadeIn 0.4s ease-out;
 }

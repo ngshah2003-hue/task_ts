@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 import validator from "validator";
-import { ValidationMsgs, TableNames, TableFields, UserTypes } from "../../utils/constants";
+import { PASSWORD_REGEX, ValidationMsgs, TableNames, TableFields, UserTypes } from "../../utils/constants";
 import ValidationError from "../../utils/ValidationError";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
@@ -30,7 +30,7 @@ const userSchema = new mongoose.Schema<IUserSchema & IUserDoc>(
     },
     [TableFields.password]: {
       type: String,
-      minlength: 8,
+      minlength: [8, ValidationMsgs.PasswordMinLength],
       trim: true,
       required: [true, ValidationMsgs.PasswordEmpty],
     },
@@ -61,8 +61,7 @@ userSchema.methods.isValidAuth = async function (password: string): Promise<bool
 };
 
 userSchema.methods.isValidPassword = function (password: string): boolean {
-  const regEx = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
-  return regEx.test(password);
+  return PASSWORD_REGEX.test(password);
 };
 
 userSchema.methods.createAuthToken = function (interfaceType?: string): string {

@@ -6,7 +6,7 @@
   "scripts": {
     "build": "tsc",
     "start": "env-cmd -f ./config/dev.env node dist/app.js",
-    "dev": "env-cmd -f ./config/dev.env nodemon --exec \"tsc && node dist/app.js\" --ext ts",
+    "dev": "env-cmd -f ./config/dev.env nodemon --exec \"tsc && node dist/app.js\" --ext ts --watch src",
     "dev:ts-node": "env-cmd -f ./config/dev.env ts-node -r tsconfig-paths/register src/app.ts"
   },
   "dependencies": {
