@@ -38,6 +38,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const apiBuilder_1 = __importDefault(require("../utils/apiBuilder"));
 const UserController = __importStar(require("../controllers/UserController"));
+const BoardMemberController = __importStar(require("../controllers/BoardMemberController"));
 const router = apiBuilder_1.default.configRoute("/user")
     .addPath("/signup")
     .asPOST(UserController.signup)
@@ -51,6 +52,10 @@ const router = apiBuilder_1.default.configRoute("/user")
     .build()
     .addPath("/me")
     .asGET(UserController.me)
+    .useUserAuth()
+    .build()
+    .addPath("/invite/accept")
+    .asPOST(BoardMemberController.acceptInvite)
     .useUserAuth()
     .build()
     .getRouter();

@@ -28,7 +28,6 @@ A Kanban-style task management app with JWT auth, boards → lists → cards, dr
    JWT_USER_PK=your-secret-key-change-in-production
    ```
 
-   (JWT_ADMIN_PK is for admin routes; Kanban uses user routes and JWT_USER_PK.)
 
 2. **Install and run**
 
@@ -50,12 +49,6 @@ A Kanban-style task management app with JWT auth, boards → lists → cards, dr
 ### Frontend
 
 1. **Environment**
-
-   Create `frontend/.env` (or set in your shell):
-
-   ```env
-   VITE_API_URL=http://localhost:8001
-   ```
 
    If unset, the app uses `http://localhost:4000` (change in `frontend/src/utils/constants.ts` if your backend is on another port).
 

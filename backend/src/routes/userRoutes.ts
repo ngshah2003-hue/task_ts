@@ -1,5 +1,6 @@
 import API from "../utils/apiBuilder";
 import * as UserController from "../controllers/UserController";
+import * as BoardMemberController from "../controllers/BoardMemberController";
 
 const router = API.configRoute("/user")
   .addPath("/signup")
@@ -17,6 +18,11 @@ const router = API.configRoute("/user")
 
   .addPath("/me")
   .asGET(UserController.me)
+  .useUserAuth()
+  .build()
+
+  .addPath("/invite/accept")
+  .asPOST(BoardMemberController.acceptInvite)
   .useUserAuth()
   .build()
 

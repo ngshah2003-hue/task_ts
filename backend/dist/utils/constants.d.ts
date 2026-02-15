@@ -1,7 +1,6 @@
 export declare const UserTypes: {
     readonly Admin: 1;
     readonly Customer: 2;
-    readonly Driver: 3;
 };
 export declare const InterfaceTypes: {
     readonly Admin: {
@@ -10,14 +9,10 @@ export declare const InterfaceTypes: {
     readonly Customer: {
         readonly CustomerApp: "i2";
     };
-    readonly Driver: {
-        readonly DriverApp: "i3";
-    };
 };
 export declare const AuthTypes: {
     readonly Admin: 1;
     readonly Customer: 2;
-    readonly Driver: 3;
 };
 export declare const ValidationMsgs: {
     readonly UserNotFound: "User Not Found";
@@ -32,7 +27,6 @@ export declare const ValidationMsgs: {
     readonly NameEmpty: "Name is required.";
     readonly NameTooLong: "Name is too long.";
 };
-/** Same as frontend: upper, lower, number, special, min 8 */
 export declare const PASSWORD_REGEX: RegExp;
 export declare const TableNames: {
     readonly Admin: "admins";
@@ -40,6 +34,9 @@ export declare const TableNames: {
     readonly Board: "boards";
     readonly List: "lists";
     readonly Card: "cards";
+    readonly Activity: "activities";
+    readonly BoardMember: "boardmembers";
+    readonly BoardInvitation: "boardinvitations";
 };
 export declare const TableFields: {
     readonly ID: "_id";
@@ -59,10 +56,20 @@ export declare const TableFields: {
     readonly owner: "owner";
     readonly boardId: "boardId";
     readonly listId: "listId";
+    readonly cardId: "cardId";
     readonly title: "title";
     readonly order: "order";
     readonly dueDate: "dueDate";
     readonly status: "status";
+    readonly actionType: "actionType";
+    readonly userId: "userId";
+    readonly cardTitle: "cardTitle";
+    readonly listTitle: "listTitle";
+    readonly fromListTitle: "fromListTitle";
+    readonly toListTitle: "toListTitle";
+    readonly invitedBy: "invitedBy";
+    readonly expiresAt: "expiresAt";
+    readonly role: "role";
 };
 export declare const CardStatus: {
     readonly Todo: "todo";

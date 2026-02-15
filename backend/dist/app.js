@@ -56,7 +56,6 @@ app.use(express_1.default.urlencoded({
 }));
 app.use(express_1.default.json({ limit: "10mb" }));
 const routesPath = path_1.default.join(__dirname, "routes");
-// Load compiled route modules (.js in dist when running compiled app)
 fs_1.default.readdirSync(routesPath).forEach((file) => {
     if (path_1.default.extname(file) === ".js") {
         const mod = require(path_1.default.join(routesPath, file));

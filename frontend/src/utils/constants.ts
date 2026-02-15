@@ -1,9 +1,7 @@
-// API BASE URL – set VITE_API_URL in .env to match your backend (e.g. http://localhost:8001)
 export const BASE_URL = 'http://localhost:8009/';
 export const PAGE_LIMIT = 10;
 export const TITLE_MAX_LENGTH = 200;
 
-// API method types (used by apiCallService + apiEndPoints)
 export const GET = 'GET';
 export const POST = 'POST';
 export const GET_URL_PARAMS = 'GET_URL_PARAMS';
@@ -30,7 +28,6 @@ export const DELETE_URL_PARAMS = 'DELETE_URL_PARAMS';
 export const DELETE_URL_ENCODED = 'DELETE_URL_ENCODED';
 export const DELETE_ID_PARAMS = 'DELETE_ID_PARAMS';
 
-// Response
 export const ResponseFail = 400;
 export const ResponseSuccess = 200;
 export const AuthError = 401;

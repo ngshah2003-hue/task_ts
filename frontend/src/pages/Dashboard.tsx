@@ -5,6 +5,7 @@ import { toast } from 'react-toastify';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { fetchBoards, createBoard, removeBoard, clearError } from '../store/slices/boardsSlice';
 import ConfirmModal from '../components/common/ConfirmModal';
+import ActivityLog from '../components/kanban/ActivityLog';
 
 const Dashboard: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -162,6 +163,10 @@ const Dashboard: React.FC = () => {
           ))}
         </div>
       )}
+
+      <div className="mt-4">
+        <ActivityLog />
+      </div>
 
       <ConfirmModal
         show={boardToDelete !== null}

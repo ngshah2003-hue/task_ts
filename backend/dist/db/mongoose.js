@@ -37,7 +37,6 @@ class MongoUtil {
 exports.MongoUtil = MongoUtil;
 function initConnection(callback) {
     if (process.env.isProduction === "true") {
-        // production options if needed
     }
     mongoose_1.default.connect(process.env.Database_URL);
     const db = mongoose_1.default.connection;

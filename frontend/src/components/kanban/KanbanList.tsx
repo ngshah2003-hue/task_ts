@@ -44,7 +44,6 @@ const KanbanList: React.FC<KanbanListProps> = ({ list, boardId, onEditCard, onDe
         await dispatch(updateListTitle({ boardId, listId: list._id, title: t })).unwrap();
         toast.success('List name edited successfully');
       } catch {
-        // error shown by global handler
       }
     }
     setEditingTitle(false);

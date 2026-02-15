@@ -2,7 +2,6 @@ import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
 import {
   TableFields,
-  UserTypes,
   InterfaceTypes,
   AuthTypes,
   ValidationMsgs,
@@ -37,13 +36,9 @@ const auth = async (req: Request, res: Response, next: NextFunction): Promise<vo
     }
 
     req.user = user;
-    (req.user as unknown as Record<string, number>)[TableFields.authType] =
-      user[TableFields.userType] === UserTypes.Customer ? AuthTypes.Customer : AuthTypes.Driver;
+    (req.user as unknown as Record<string, number>)[TableFields.authType] = AuthTypes.Customer;
     (req as Request & { interface?: string })[TableFields.interface] =
-      decoded[TableFields.interface] ??
-      (user[TableFields.userType] === UserTypes.Customer
-        ? InterfaceTypes.Customer.CustomerApp
-        : InterfaceTypes.Driver.DriverApp);
+      decoded[TableFields.interface] ?? InterfaceTypes.Customer.CustomerApp;
     next();
   } catch (e) {
     if (!(e instanceof ValidationError)) console.error(e);

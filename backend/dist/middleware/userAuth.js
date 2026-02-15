@@ -28,13 +28,9 @@ const auth = async (req, res, next) => {
             return;
         }
         req.user = user;
-        req.user[constants_1.TableFields.authType] =
-            user[constants_1.TableFields.userType] === constants_1.UserTypes.Customer ? constants_1.AuthTypes.Customer : constants_1.AuthTypes.Driver;
+        req.user[constants_1.TableFields.authType] = constants_1.AuthTypes.Customer;
         req[constants_1.TableFields.interface] =
-            decoded[constants_1.TableFields.interface] ??
-                (user[constants_1.TableFields.userType] === constants_1.UserTypes.Customer
-                    ? constants_1.InterfaceTypes.Customer.CustomerApp
-                    : constants_1.InterfaceTypes.Driver.DriverApp);
+            decoded[constants_1.TableFields.interface] ?? constants_1.InterfaceTypes.Customer.CustomerApp;
         next();
     }
     catch (e) {

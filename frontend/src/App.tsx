@@ -10,6 +10,7 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import BoardDetail from './pages/BoardDetail';
+import AcceptInvitePage from './pages/AcceptInvitePage';
 
 const ProtectedRoute: React.FC<{ children: ReactNode }> = ({ children }) => {
   const isAuthenticated = useAppSelector((s) => s.auth.isAuthenticated);
@@ -57,6 +58,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <BoardDetail />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/accept-invite"
+            element={
+              <ProtectedRoute>
+                <AcceptInvitePage />
               </ProtectedRoute>
             }
           />

@@ -1,8 +1,9 @@
 import { TableFields, CardStatus } from "../../utils/constants";
 import ValidationError from "../../utils/ValidationError";
-import Board from "../models/board";
+import BoardService from "./BoardService";
 import List from "../models/list";
 import Card from "../models/card";
+import ActivityService, { ActivityActionTypes } from "./ActivityService";
 import type mongoose from "mongoose";
 import type { ICardDoc } from "../models/card";
 
@@ -34,8 +35,7 @@ export default class CardService {
     userId: mongoose.Types.ObjectId,
     body: { title: string; dueDate?: string | Date; status?: string },
   ): Promise<ICardDoc> {
-    const board = await Board.findOne({ _id: boardId, [TableFields.owner]: userId });
-    if (!board) throw new ValidationError(ValidationMsgs.NotBoardOwner);
+    await BoardService.assertCanAccess(boardId, userId);
     const list = await List.findOne({ _id: listId, [TableFields.boardId]: boardId });
     if (!list) throw new ValidationError(ValidationMsgs.ListNotFound);
     const title = (body.title ?? "").toString().trim();
@@ -63,6 +63,15 @@ export default class CardService {
       [TableFields.status]: status,
     });
     await card.save();
+    await ActivityService.log({
+      boardId,
+      userId,
+      actionType: ActivityActionTypes.CardCreated,
+      cardId: card._id,
+      cardTitle: card.title,
+      listId: list._id,
+      listTitle: list.title,
+    });
     return card;
   }
 
@@ -73,8 +82,7 @@ export default class CardService {
   ): Promise<ICardDoc> {
     const card = await Card.findById(cardId);
     if (!card) throw new ValidationError(ValidationMsgs.CardNotFound);
-    const board = await Board.findOne({ _id: card.boardId, [TableFields.owner]: userId });
-    if (!board) throw new ValidationError(ValidationMsgs.NotBoardOwner);
+    await BoardService.assertCanAccess(card.boardId.toString(), userId);
     if (body.title !== undefined) {
       const t = body.title.toString().trim();
       if (!t) throw new ValidationError("Card title is required.");
@@ -94,14 +102,28 @@ export default class CardService {
       }
     }
     await card.save();
+    await ActivityService.log({
+      boardId: card.boardId,
+      userId,
+      actionType: ActivityActionTypes.CardUpdated,
+      cardId: card._id,
+      cardTitle: card.title,
+    });
     return card;
   }
 
   static async delete(cardId: string, userId: mongoose.Types.ObjectId): Promise<void> {
     const card = await Card.findById(cardId);
     if (!card) throw new ValidationError(ValidationMsgs.CardNotFound);
-    const board = await Board.findOne({ _id: card.boardId, [TableFields.owner]: userId });
-    if (!board) throw new ValidationError(ValidationMsgs.NotBoardOwner);
+    await BoardService.assertCanAccess(card.boardId.toString(), userId);
+    const list = await List.findById(card.listId).lean();
+    await ActivityService.log({
+      boardId: card.boardId,
+      userId,
+      actionType: ActivityActionTypes.CardDeleted,
+      cardTitle: card.title,
+      listTitle: list?.title,
+    });
     await Card.deleteOne({ _id: cardId });
     await this.reindexList(card.listId.toString());
   }
@@ -115,7 +137,6 @@ export default class CardService {
     }
   }
 
-  /** Move card to target list at position. Reindex only affected lists. */
   static async move(
     cardId: string,
     userId: mongoose.Types.ObjectId,
@@ -124,8 +145,7 @@ export default class CardService {
   ): Promise<ICardDoc> {
     const card = await Card.findById(cardId);
     if (!card) throw new ValidationError(ValidationMsgs.CardNotFound);
-    const board = await Board.findOne({ _id: card.boardId, [TableFields.owner]: userId });
-    if (!board) throw new ValidationError(ValidationMsgs.NotBoardOwner);
+    await BoardService.assertCanAccess(card.boardId.toString(), userId);
     const targetList = await List.findOne({ _id: targetListId, [TableFields.boardId]: card.boardId });
     if (!targetList) throw new ValidationError(ValidationMsgs.ListNotFound);
     const sameList = card.listId.toString() === targetListId;
@@ -144,6 +164,15 @@ export default class CardService {
           await Card.updateOne({ _id: reordered[i]._id }, { [TableFields.order]: i });
         }
       }
+      await ActivityService.log({
+        boardId: card.boardId,
+        userId,
+        actionType: ActivityActionTypes.CardMoved,
+        cardId: card._id,
+        cardTitle: card.title,
+        fromListTitle: (await List.findById(fromListId).lean())?.title,
+        toListTitle: targetList.title,
+      });
       card.order = newOrder;
       return card;
     }
@@ -171,6 +200,16 @@ export default class CardService {
     }
     const inserted = await Card.findById(cardId);
     if (inserted) inserted.order = pos;
+    const fromList = await List.findById(fromListId).lean();
+    await ActivityService.log({
+      boardId: card.boardId,
+      userId,
+      actionType: ActivityActionTypes.CardMoved,
+      cardId: card._id,
+      cardTitle: card.title,
+      fromListTitle: fromList?.title,
+      toListTitle: targetList.title,
+    });
     return inserted!;
   }
 
@@ -179,8 +218,7 @@ export default class CardService {
     userId: mongoose.Types.ObjectId,
     opts: CardListOptions = {},
   ): Promise<CardListResult> {
-    const board = await Board.findOne({ _id: boardId, [TableFields.owner]: userId });
-    if (!board) throw new ValidationError(ValidationMsgs.NotBoardOwner);
+    await BoardService.assertCanAccess(boardId, userId);
     const page = Math.max(1, opts.page ?? 1);
     const limitCap = opts.limit === undefined || opts.limit === 0 ? 500 : opts.limit;
     const limit = Math.min(500, Math.max(1, limitCap));

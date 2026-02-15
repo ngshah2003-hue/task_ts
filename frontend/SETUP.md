@@ -19,8 +19,7 @@ npm install
 
 The app calls the backend for auth and Kanban data. Set the API base URL:
 
-- **Option A:** In `src/utils/constants.ts`, set `BASE_URL` to your backend (e.g. `http://localhost:8009/`).
-- **Option B:** Use a `.env` file with `VITE_API_URL=http://localhost:8009` and read it in code (e.g. `import.meta.env.VITE_API_URL`), then use that in your API client instead of the hardcoded `BASE_URL`.
+**In `src/utils/constants.ts`, set `BASE_URL` to your backend (e.g. `http://localhost:8009/`)
 
 Ensure the URL matches the backend `PORT` from `backend/config/dev.env`.
 

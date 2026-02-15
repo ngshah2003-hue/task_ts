@@ -1,16 +1,13 @@
 import validator from "validator";
 import { Request } from "express";
 import UserService from "../db/services/UserService";
-import { TableFields, ValidationMsgs, InterfaceTypes, UserTypes } from "../utils/constants";
+import { TableFields, ValidationMsgs, InterfaceTypes } from "../utils/constants";
 import ValidationError from "../utils/ValidationError";
 import type { IUserDoc } from "../types";
 
 export async function signup(req: Request): Promise<{ user: IUserDoc; token: string }> {
   const user = await UserService.insertUserRecord(req.body);
-  const interfaceType =
-    user[TableFields.userType] === UserTypes.Customer
-      ? InterfaceTypes.Customer.CustomerApp
-      : InterfaceTypes.Driver.DriverApp;
+  const interfaceType = InterfaceTypes.Customer.CustomerApp;
   const token = user.createAuthToken(interfaceType);
   await UserService.saveAuthToken(user[TableFields.ID], token);
   return { user, token };
@@ -35,10 +32,7 @@ export async function login(req: Request): Promise<{ user: IUserDoc; token: stri
     throw new ValidationError(ValidationMsgs.UnableToLogin);
   }
 
-  const interfaceType =
-    user[TableFields.userType] === UserTypes.Customer
-      ? InterfaceTypes.Customer.CustomerApp
-      : InterfaceTypes.Driver.DriverApp;
+  const interfaceType = InterfaceTypes.Customer.CustomerApp;
   const token = user.createAuthToken(interfaceType);
   await UserService.saveAuthToken(user[TableFields.ID], token);
 

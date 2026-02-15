@@ -24,7 +24,6 @@ api.interceptors.response.use(
   }
 );
 
-// Types
 export interface User {
   _id: string;
   email: string;
@@ -61,7 +60,6 @@ export interface Card {
 
 export const cardStatuses = ['todo', 'in_progress', 'done'] as const;
 
-// Auth
 export async function login(email: string, password: string): Promise<{ user: User; token: string }> {
   const { data } = await api.post<{ user: User; token: string }>('/user/login', { email, password });
   return data;
@@ -76,7 +74,6 @@ export async function logout(): Promise<void> {
   await api.post('/user/logout');
 }
 
-// Boards
 export async function getBoards(): Promise<{ boards: Board[]; total: number }> {
   const { data } = await api.get<{ boards: Board[]; total: number }>('/user/boards');
   return data;
@@ -108,7 +105,6 @@ export async function deleteBoard(boardId: string): Promise<void> {
   await api.delete(`/user/boards/${boardId}`);
 }
 
-// Lists
 export async function createList(boardId: string, title: string): Promise<{ list: List }> {
   const { data } = await api.post<{ list: List }>(`/user/boards/${boardId}/lists`, { title });
   return data;
@@ -123,7 +119,6 @@ export async function deleteList(boardId: string, listId: string): Promise<void>
   await api.delete(`/user/boards/${boardId}/lists/${listId}`);
 }
 
-// Cards
 export async function createCard(
   boardId: string,
   listId: string,
@@ -156,6 +151,81 @@ export async function getCards(
     { params }
   );
   return data;
+}
+
+export interface ActivityItem {
+  _id: string;
+  boardId: string;
+  userId: { _id: string; name?: string; email?: string };
+  actionType: string;
+  cardTitle?: string;
+  listTitle?: string;
+  fromListTitle?: string;
+  toListTitle?: string;
+  createdAt: string;
+}
+
+export interface ActivityItemWithBoard extends Omit<ActivityItem, 'boardId'> {
+  boardId?: { _id: string; title?: string };
+}
+
+export async function getBoardActivity(
+  boardId: string,
+  params?: { page?: number; limit?: number }
+): Promise<{ activities: ActivityItem[]; total: number; totalPages: number }> {
+  const { data } = await api.get<{ activities: ActivityItem[]; total: number; totalPages: number }>(
+    `/user/boards/${boardId}/activity`,
+    { params }
+  );
+  return data;
+}
+
+export async function getMyActivity(
+  params?: { page?: number; limit?: number }
+): Promise<{ activities: ActivityItemWithBoard[]; total: number; totalPages: number }> {
+  const { data } = await api.get<{ activities: ActivityItemWithBoard[]; total: number; totalPages: number }>(
+    '/user/activity',
+    { params }
+  );
+  return data;
+}
+
+export interface BoardMemberItem {
+  _id: string;
+  userId: { _id: string; name?: string; email?: string };
+  role: string;
+}
+
+export interface BoardInvitationItem {
+  _id: string;
+  email: string;
+  expiresAt: string;
+  invitedBy?: { name?: string; email?: string };
+}
+
+export async function inviteToBoard(boardId: string, email: string): Promise<{ token: string; expiresAt: string; message: string }> {
+  const { data } = await api.post<{ token: string; expiresAt: string; message: string }>(`/user/boards/${boardId}/invite`, { email });
+  return data;
+}
+
+export async function getBoardMembers(boardId: string): Promise<{ members: BoardMemberItem[]; invitations: BoardInvitationItem[] }> {
+  const { data } = await api.get<{ members: BoardMemberItem[]; invitations: BoardInvitationItem[] }>(
+    `/user/boards/${boardId}/members`
+  );
+  return data;
+}
+
+export async function acceptInvite(token: string): Promise<{ boardId: string }> {
+  const { data } = await api.post<{ boardId: string }>('/user/invite/accept', { token });
+  return data;
+}
+
+export async function removeBoardMember(boardId: string, userId: string): Promise<void> {
+  await api.delete(`/user/boards/${boardId}/members/${userId}`);
+}
+
+export async function cancelBoardInvite(boardId: string, invitationId: string): Promise<void> {
+  await api.delete(`/user/boards/${boardId}/invitations/${invitationId}`);
 }
 
 export function getApiError(err: unknown): string {

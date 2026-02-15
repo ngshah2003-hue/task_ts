@@ -4,17 +4,14 @@ exports.ResponseStatus = exports.CardStatus = exports.TableFields = exports.Tabl
 exports.UserTypes = {
     Admin: 1,
     Customer: 2,
-    Driver: 3,
 };
 exports.InterfaceTypes = {
     Admin: { AdminWeb: "i1" },
     Customer: { CustomerApp: "i2" },
-    Driver: { DriverApp: "i3" },
 };
 exports.AuthTypes = {
     Admin: 1,
     Customer: 2,
-    Driver: 3,
 };
 exports.ValidationMsgs = {
     UserNotFound: "User Not Found",
@@ -29,7 +26,6 @@ exports.ValidationMsgs = {
     NameEmpty: "Name is required.",
     NameTooLong: "Name is too long.",
 };
-/** Same as frontend: upper, lower, number, special, min 8 */
 exports.PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
 exports.TableNames = {
     Admin: "admins",
@@ -37,6 +33,9 @@ exports.TableNames = {
     Board: "boards",
     List: "lists",
     Card: "cards",
+    Activity: "activities",
+    BoardMember: "boardmembers",
+    BoardInvitation: "boardinvitations",
 };
 exports.TableFields = {
     ID: "_id",
@@ -53,14 +52,23 @@ exports.TableFields = {
     image: "image",
     passwordResetToken: "passwordResetToken",
     passwordResetExpires: "passwordResetExpires",
-    // Kanban
     owner: "owner",
     boardId: "boardId",
     listId: "listId",
+    cardId: "cardId",
     title: "title",
     order: "order",
     dueDate: "dueDate",
     status: "status",
+    actionType: "actionType",
+    userId: "userId",
+    cardTitle: "cardTitle",
+    listTitle: "listTitle",
+    fromListTitle: "fromListTitle",
+    toListTitle: "toListTitle",
+    invitedBy: "invitedBy",
+    expiresAt: "expiresAt",
+    role: "role",
 };
 exports.CardStatus = {
     Todo: "todo",

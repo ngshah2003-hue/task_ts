@@ -33,7 +33,6 @@ export class MongoUtil {
 
 export function initConnection(callback: () => void): void {
   if (process.env.isProduction === "true") {
-    // production options if needed
   }
   mongoose.connect(process.env.Database_URL as string);
   const db = mongoose.connection;

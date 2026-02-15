@@ -31,7 +31,6 @@ Edit `config/dev.env`:
 | `HOST` | Base host (e.g. `http://127.0.0.1`) |
 | `Database_URL` | MongoDB connection string (e.g. `mongodb://127.0.0.1:27017/kanban`) |
 | `JWT_USER_PK` | Secret for signing user JWT tokens (change in production) |
-| `JWT_ADMIN_PK` | Secret for admin JWT (if using admin routes) |
 
 ## 3. Build
 

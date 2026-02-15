@@ -13,9 +13,7 @@ const constants_1 = require("../utils/constants");
 const ValidationError_1 = __importDefault(require("../utils/ValidationError"));
 async function signup(req) {
     const user = await UserService_1.default.insertUserRecord(req.body);
-    const interfaceType = user[constants_1.TableFields.userType] === constants_1.UserTypes.Customer
-        ? constants_1.InterfaceTypes.Customer.CustomerApp
-        : constants_1.InterfaceTypes.Driver.DriverApp;
+    const interfaceType = constants_1.InterfaceTypes.Customer.CustomerApp;
     const token = user.createAuthToken(interfaceType);
     await UserService_1.default.saveAuthToken(user[constants_1.TableFields.ID], token);
     return { user, token };
@@ -38,9 +36,7 @@ async function login(req) {
     if (!user || !(await user.isValidAuth(password)) || !user[constants_1.TableFields.active]) {
         throw new ValidationError_1.default(constants_1.ValidationMsgs.UnableToLogin);
     }
-    const interfaceType = user[constants_1.TableFields.userType] === constants_1.UserTypes.Customer
-        ? constants_1.InterfaceTypes.Customer.CustomerApp
-        : constants_1.InterfaceTypes.Driver.DriverApp;
+    const interfaceType = constants_1.InterfaceTypes.Customer.CustomerApp;
     const token = user.createAuthToken(interfaceType);
     await UserService_1.default.saveAuthToken(user[constants_1.TableFields.ID], token);
     return { user, token };

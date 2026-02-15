@@ -1,13 +1,47 @@
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const constants_1 = require("../../utils/constants");
 const ValidationError_1 = __importDefault(require("../../utils/ValidationError"));
-const board_1 = __importDefault(require("../models/board"));
+const BoardService_1 = __importDefault(require("./BoardService"));
 const list_1 = __importDefault(require("../models/list"));
 const card_1 = __importDefault(require("../models/card"));
+const ActivityService_1 = __importStar(require("./ActivityService"));
 const ValidationMsgs = {
     CardNotFound: "Card not found.",
     NotBoardOwner: "You do not have access to this board.",
@@ -15,9 +49,7 @@ const ValidationMsgs = {
 };
 class CardService {
     static async create(boardId, listId, userId, body) {
-        const board = await board_1.default.findOne({ _id: boardId, [constants_1.TableFields.owner]: userId });
-        if (!board)
-            throw new ValidationError_1.default(ValidationMsgs.NotBoardOwner);
+        await BoardService_1.default.assertCanAccess(boardId, userId);
         const list = await list_1.default.findOne({ _id: listId, [constants_1.TableFields.boardId]: boardId });
         if (!list)
             throw new ValidationError_1.default(ValidationMsgs.ListNotFound);
@@ -48,15 +80,22 @@ class CardService {
             [constants_1.TableFields.status]: status,
         });
         await card.save();
+        await ActivityService_1.default.log({
+            boardId,
+            userId,
+            actionType: ActivityService_1.ActivityActionTypes.CardCreated,
+            cardId: card._id,
+            cardTitle: card.title,
+            listId: list._id,
+            listTitle: list.title,
+        });
         return card;
     }
     static async update(cardId, userId, body) {
         const card = await card_1.default.findById(cardId);
         if (!card)
             throw new ValidationError_1.default(ValidationMsgs.CardNotFound);
-        const board = await board_1.default.findOne({ _id: card.boardId, [constants_1.TableFields.owner]: userId });
-        if (!board)
-            throw new ValidationError_1.default(ValidationMsgs.NotBoardOwner);
+        await BoardService_1.default.assertCanAccess(card.boardId.toString(), userId);
         if (body.title !== undefined) {
             const t = body.title.toString().trim();
             if (!t)
@@ -79,15 +118,28 @@ class CardService {
             }
         }
         await card.save();
+        await ActivityService_1.default.log({
+            boardId: card.boardId,
+            userId,
+            actionType: ActivityService_1.ActivityActionTypes.CardUpdated,
+            cardId: card._id,
+            cardTitle: card.title,
+        });
         return card;
     }
     static async delete(cardId, userId) {
         const card = await card_1.default.findById(cardId);
         if (!card)
             throw new ValidationError_1.default(ValidationMsgs.CardNotFound);
-        const board = await board_1.default.findOne({ _id: card.boardId, [constants_1.TableFields.owner]: userId });
-        if (!board)
-            throw new ValidationError_1.default(ValidationMsgs.NotBoardOwner);
+        await BoardService_1.default.assertCanAccess(card.boardId.toString(), userId);
+        const list = await list_1.default.findById(card.listId).lean();
+        await ActivityService_1.default.log({
+            boardId: card.boardId,
+            userId,
+            actionType: ActivityService_1.ActivityActionTypes.CardDeleted,
+            cardTitle: card.title,
+            listTitle: list?.title,
+        });
         await card_1.default.deleteOne({ _id: cardId });
         await this.reindexList(card.listId.toString());
     }
@@ -99,14 +151,11 @@ class CardService {
             }
         }
     }
-    /** Move card to target list at position. Reindex only affected lists. */
     static async move(cardId, userId, targetListId, position) {
         const card = await card_1.default.findById(cardId);
         if (!card)
             throw new ValidationError_1.default(ValidationMsgs.CardNotFound);
-        const board = await board_1.default.findOne({ _id: card.boardId, [constants_1.TableFields.owner]: userId });
-        if (!board)
-            throw new ValidationError_1.default(ValidationMsgs.NotBoardOwner);
+        await BoardService_1.default.assertCanAccess(card.boardId.toString(), userId);
         const targetList = await list_1.default.findOne({ _id: targetListId, [constants_1.TableFields.boardId]: card.boardId });
         if (!targetList)
             throw new ValidationError_1.default(ValidationMsgs.ListNotFound);
@@ -127,6 +176,15 @@ class CardService {
                     await card_1.default.updateOne({ _id: reordered[i]._id }, { [constants_1.TableFields.order]: i });
                 }
             }
+            await ActivityService_1.default.log({
+                boardId: card.boardId,
+                userId,
+                actionType: ActivityService_1.ActivityActionTypes.CardMoved,
+                cardId: card._id,
+                cardTitle: card.title,
+                fromListTitle: (await list_1.default.findById(fromListId).lean())?.title,
+                toListTitle: targetList.title,
+            });
             card.order = newOrder;
             return card;
         }
@@ -152,12 +210,20 @@ class CardService {
         const inserted = await card_1.default.findById(cardId);
         if (inserted)
             inserted.order = pos;
+        const fromList = await list_1.default.findById(fromListId).lean();
+        await ActivityService_1.default.log({
+            boardId: card.boardId,
+            userId,
+            actionType: ActivityService_1.ActivityActionTypes.CardMoved,
+            cardId: card._id,
+            cardTitle: card.title,
+            fromListTitle: fromList?.title,
+            toListTitle: targetList.title,
+        });
         return inserted;
     }
     static async listByBoard(boardId, userId, opts = {}) {
-        const board = await board_1.default.findOne({ _id: boardId, [constants_1.TableFields.owner]: userId });
-        if (!board)
-            throw new ValidationError_1.default(ValidationMsgs.NotBoardOwner);
+        await BoardService_1.default.assertCanAccess(boardId, userId);
         const page = Math.max(1, opts.page ?? 1);
         const limitCap = opts.limit === undefined || opts.limit === 0 ? 500 : opts.limit;
         const limit = Math.min(500, Math.max(1, limitCap));

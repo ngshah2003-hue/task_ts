@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   DndContext,
@@ -10,7 +10,7 @@ import {
   useSensors,
 } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
-import { Container, Spinner, Card as BSCard, Button, Form, InputGroup } from 'react-bootstrap';
+import { Container, Spinner, Card as BSCard, Button, Form, InputGroup, Modal } from 'react-bootstrap';
 import { toast } from 'react-toastify';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
 import {
@@ -24,6 +24,7 @@ import {
   clearBoardDetail,
   clearError,
 } from '../store/slices/boardDetailSlice';
+import * as kanbanApi from '../api/kanbanApi';
 import type { Card as CardType } from '../api/kanbanApi';
 import { cardStatuses } from '../api/kanbanApi';
 import KanbanList from '../components/kanban/KanbanList';
@@ -34,6 +35,7 @@ import { useDebounce } from '../hooks/useDebounce';
 import { getStatusLabel, getStatusBadgeVariant } from '../utils/statusLabel';
 
 const SEARCH_DEBOUNCE_MS = 400;
+const POLL_INTERVAL_MS = 15000;
 const LIST_LIMIT_OPTIONS = [
   { value: '', label: 'All' },
   { value: 10, label: '10' },
@@ -49,6 +51,8 @@ const BoardDetail: React.FC = () => {
   const { board, lists, totalLists, totalPages, loading, error } = useAppSelector(
     s => s.boardDetail,
   );
+  const currentUser = useAppSelector(s => s.auth.user);
+  const currentUserId = currentUser?._id;
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('');
   const debouncedSearch = useDebounce(search.trim(), SEARCH_DEBOUNCE_MS);
@@ -62,6 +66,11 @@ const BoardDetail: React.FC = () => {
   const [listSubmitAttempted, setListSubmitAttempted] = useState(false);
   const [listLimit, setListLimit] = useState<number | ''>(10);
   const [listPage, setListPage] = useState(1);
+  const [showInviteModal, setShowInviteModal] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [inviteLoading, setInviteLoading] = useState(false);
+  const [members, setMembers] = useState<{ members: kanbanApi.BoardMemberItem[]; invitations: kanbanApi.BoardInvitationItem[] } | null>(null);
+  const fetchParamsRef = useRef({ listPage: 1, listLimit: 10, debouncedSearch: '', statusFilter: '', hasLists: false });
 
   const hasLists = lists.length > 0;
   const filterDisabled = !hasLists;
@@ -77,6 +86,13 @@ const BoardDetail: React.FC = () => {
     if (filterDisabled && (debouncedSearch || statusFilter)) return;
     const limit = listLimit === '' ? ALL_LISTS_LIMIT : listLimit;
     const passFilters = lists.length > 0;
+    fetchParamsRef.current = {
+      listPage,
+      listLimit: limit,
+      debouncedSearch,
+      statusFilter,
+      hasLists: lists.length > 0,
+    };
     dispatch(
       fetchBoardDetail({
         boardId,
@@ -90,6 +106,24 @@ const BoardDetail: React.FC = () => {
       }),
     );
   }, [boardId, debouncedSearch, statusFilter, listPage, listLimit, dispatch]);
+
+  useEffect(() => {
+    if (!boardId) return;
+    const interval = setInterval(() => {
+      const { listPage: p, listLimit: lim, debouncedSearch: q, statusFilter: st, hasLists } = fetchParamsRef.current;
+      dispatch(
+        fetchBoardDetail({
+          boardId,
+          params: {
+            ...(hasLists ? { q: q || undefined, status: st || undefined } : {}),
+            listPage: p,
+            listLimit: lim,
+          },
+        }),
+      );
+    }, POLL_INTERVAL_MS);
+    return () => clearInterval(interval);
+  }, [boardId, dispatch]);
 
   useEffect(() => {
     setListPage(1);
@@ -326,6 +360,7 @@ const BoardDetail: React.FC = () => {
               </BSCard.Body>
             </BSCard>
           )}
+
         </div>
 
         <DragOverlay>
@@ -378,6 +413,104 @@ const BoardDetail: React.FC = () => {
         }}
         onCancel={() => !deletingCard && setCardToDelete(null)}
       />
+
+      <Modal show={showInviteModal} onHide={() => { setShowInviteModal(false); setInviteEmail(''); }} centered>
+        <Modal.Header closeButton>
+          <Modal.Title>Board members</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <Form
+            className="mb-3"
+            onSubmit={async (e) => {
+              e.preventDefault();
+              if (!boardId || !inviteEmail.trim()) return;
+              setInviteLoading(true);
+              try {
+                await kanbanApi.inviteToBoard(boardId, inviteEmail.trim());
+                toast.success('Invitation sent');
+                setInviteEmail('');
+                const res = await kanbanApi.getBoardMembers(boardId);
+                setMembers(res);
+              } catch (err) {
+                toast.error(kanbanApi.getApiError(err));
+              } finally {
+                setInviteLoading(false);
+              }
+            }}
+          >
+            <InputGroup size="sm">
+              <Form.Control
+                type="email"
+                placeholder="Email to invite"
+                value={inviteEmail}
+                onChange={(e) => setInviteEmail(e.target.value)}
+              />
+              <Button type="submit" variant="primary" disabled={inviteLoading}>
+                {inviteLoading ? 'Sending…' : 'Send invite'}
+              </Button>
+            </InputGroup>
+          </Form>
+          {members && (
+            <>
+              <div className="small fw-medium text-muted mb-1">Members</div>
+              <ul className="list-unstyled small mb-3">
+                {members.members.map((m) => (
+                  <li key={m._id} className="d-flex align-items-center justify-content-between py-1">
+                    <span>{m.userId?.name || m.userId?.email || m.userId?._id}</span>
+                    {board?.owner !== m.userId?._id && (currentUserId === board?.owner || currentUserId === m.userId?._id) && (
+                      <Button
+                        size="sm"
+                        variant="outline-danger"
+                        onClick={async () => {
+                          if (!boardId) return;
+                          try {
+                            await kanbanApi.removeBoardMember(boardId, m.userId._id);
+                            toast.success('Member removed');
+                            const res = await kanbanApi.getBoardMembers(boardId);
+                            setMembers(res);
+                          } catch (err) {
+                            toast.error(kanbanApi.getApiError(err));
+                          }
+                        }}
+                      >
+                        Remove
+                      </Button>
+                    )}
+                  </li>
+                ))}
+              </ul>
+              <div className="small fw-medium text-muted mb-1">Pending invitations</div>
+              <ul className="list-unstyled small mb-0">
+                {members.invitations.map((inv) => (
+                  <li key={inv._id} className="d-flex align-items-center justify-content-between py-1">
+                    <span>{inv.email}</span>
+                    {currentUserId === board?.owner && (
+                    <Button
+                      size="sm"
+                      variant="outline-secondary"
+                      onClick={async () => {
+                        if (!boardId) return;
+                        try {
+                          await kanbanApi.cancelBoardInvite(boardId, inv._id);
+                          toast.success('Invitation cancelled');
+                          const res = await kanbanApi.getBoardMembers(boardId);
+                          setMembers(res);
+                        } catch (err) {
+                          toast.error(kanbanApi.getApiError(err));
+                        }
+                      }}
+                    >
+                      Cancel
+                    </Button>
+                    )}
+                  </li>
+                ))}
+                {members.invitations.length === 0 && <li className="text-muted">None</li>}
+              </ul>
+            </>
+          )}
+        </Modal.Body>
+      </Modal>
     </Container>
   );
 };

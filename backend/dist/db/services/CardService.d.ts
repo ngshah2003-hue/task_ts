@@ -26,7 +26,6 @@ export default class CardService {
     }): Promise<ICardDoc>;
     static delete(cardId: string, userId: mongoose.Types.ObjectId): Promise<void>;
     static reindexList(listId: string): Promise<void>;
-    /** Move card to target list at position. Reindex only affected lists. */
     static move(cardId: string, userId: mongoose.Types.ObjectId, targetListId: string, position: number): Promise<ICardDoc>;
     static listByBoard(boardId: string, userId: mongoose.Types.ObjectId, opts?: CardListOptions): Promise<CardListResult>;
 }
